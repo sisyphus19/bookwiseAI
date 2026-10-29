@@ -27,3 +27,8 @@ Thumbs.db
 
 # Generated data
 *.sqlite3
+
+# Notebook / generated artifacts
+.ipynb_checkpoints/
+*.db
+*.pyc

@@ -28,7 +28,7 @@ jobs:
 
       - name: Run Pytest Suite
         run: |
-          pytest tests/test_phase1.py -v
+          pytest tests/ -v
 
   docker-build:
     name: Build Microservices Docker Images

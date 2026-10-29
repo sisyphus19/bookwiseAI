@@ -117,7 +117,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: bookwise-llm-worker
-    command: python llm-worker/worker.py
+    command: python llm_worker/worker.py
     environment:
       - REDIS_URL=redis://redis:6379/0
       - LLM_PROVIDER=local

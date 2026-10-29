@@ -14,7 +14,7 @@ from core.vector_db import vector_store
 
 logger = get_logger("etl-pipeline")
 
-BOOKS_CSV = Path("data/raw/books.csv")
+BOOKS_CSV = Path("data/raw/Books.csv")
 DEV_LIMIT = 1000  # Set to None to ingest the full dataset
 
 
