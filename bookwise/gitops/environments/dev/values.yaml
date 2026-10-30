@@ -1,0 +1,20 @@
+global:
+  environment: development
+  logLevel: DEBUG
+  apiPrefix: /api/v1
+
+replicaCount:
+  apiGateway: 1
+  userService: 1
+  bookService: 1
+  retrievalService: 1
+  recommendationService: 1
+  llmWorker: 1
+  analyticsService: 1
+  frontend: 1
+
+autoscaling:
+  enabled: false
+
+llm:
+  provider: local

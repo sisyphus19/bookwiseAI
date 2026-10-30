@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bookwise.fullname" . }}-config
+  labels:
+    {{- include "bookwise.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  LOG_LEVEL: {{ .Values.global.logLevel | quote }}
+  API_PREFIX: {{ .Values.global.apiPrefix | quote }}
+  QDRANT_HOST: {{ .Values.vectorDb.host | quote }}
+  QDRANT_PORT: {{ .Values.vectorDb.port | quote }}
+  REDIS_HOST: {{ .Values.redis.host | quote }}
+  REDIS_PORT: {{ .Values.redis.port | quote }}
+  LLM_PROVIDER: {{ .Values.llm.provider | quote }}

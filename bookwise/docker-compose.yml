@@ -1,0 +1,181 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookwise-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: bookwise_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: bookwise-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  redis:
+    image: redis:7-alpine
+    container_name: bookwise-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-api-gateway
+    # Use --app-dir to point uvicorn at the subdirectory, avoiding hyphenated module import
+    command: uvicorn main:app --app-dir api-gateway --host 0.0.0.0 --port 8000
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/bookwise_db
+      - QDRANT_HOST=qdrant
+      - REDIS_URL=redis://redis:6379/0
+      - RETRIEVAL_SERVICE_URL=http://retrieval-service:8003
+      - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8004
+      - USER_SERVICE_URL=http://user-service:8001
+      - BOOK_SERVICE_URL=http://book-service:8002
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8005
+      - ALLOW_SQLITE_FALLBACK=false
+      - LLM_PROVIDER=${LLM_PROVIDER:-local}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-20}
+      - LLM_JOB_WAIT_SECONDS=${LLM_JOB_WAIT_SECONDS:-25}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-user-service
+    command: uvicorn main:app --app-dir user-service --host 0.0.0.0 --port 8001
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/bookwise_db
+      - SECRET_KEY=bookwise-production-secret-key-must-be-32bytes-long
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  book-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-book-service
+    command: uvicorn main:app --app-dir book-service --host 0.0.0.0 --port 8002
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/bookwise_db
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  retrieval-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-retrieval-service
+    command: uvicorn main:app --app-dir retrieval-service --host 0.0.0.0 --port 8003
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/bookwise_db
+      - ALLOW_SQLITE_FALLBACK=false
+    ports:
+      - "8003:8003"
+    depends_on:
+      - qdrant
+
+  recommendation-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-recommendation-service
+    command: uvicorn main:app --app-dir recommendation-service --host 0.0.0.0 --port 8004
+    ports:
+      - "8004:8004"
+
+  llm-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-llm-worker
+    command: python llm_worker/worker.py
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LLM_PROVIDER=${LLM_PROVIDER:-local}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-20}
+    depends_on:
+      - redis
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-etl
+    # One-shot: `docker compose --profile tools run --rm etl` (add --full for the whole CSV)
+    command: python etl.py
+    profiles: ["tools"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/bookwise_db
+      - ALLOW_SQLITE_FALLBACK=false
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-analytics-service
+    command: uvicorn main:app --app-dir analytics-service --host 0.0.0.0 --port 8005
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8005:8005"
+    depends_on:
+      - redis
+
+  frontend:
+    image: nginx:alpine
+    container_name: bookwise-frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
