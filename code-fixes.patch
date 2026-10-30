@@ -1,0 +1,65 @@
+diff --git a/.github/workflows/ci-cd.yml b/.github/workflows/ci-cd.yml
+index dbae743..69fd25b 100644
+--- a/.github/workflows/ci-cd.yml
++++ b/.github/workflows/ci-cd.yml
+@@ -28,7 +28,7 @@ jobs:
+ 
+       - name: Run Pytest Suite
+         run: |
+-          pytest tests/test_phase1.py -v
++          pytest tests/ -v
+ 
+   docker-build:
+     name: Build Microservices Docker Images
+diff --git a/.gitignore b/.gitignore
+index 02f5ae8..7a06093 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -27,3 +27,8 @@ Thumbs.db
+ 
+ # Generated data
+ *.sqlite3
++
++# Notebook / generated artifacts
++.ipynb_checkpoints/
++*.db
++*.pyc
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 27fb90a..50c1047 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -117,7 +117,7 @@ services:
+       context: .
+       dockerfile: Dockerfile
+     container_name: bookwise-llm-worker
+-    command: python llm-worker/worker.py
++    command: python llm_worker/worker.py
+     environment:
+       - REDIS_URL=redis://redis:6379/0
+       - LLM_PROVIDER=local
+diff --git a/etl.py b/etl.py
+index a6df938..cd17a30 100644
+--- a/etl.py
++++ b/etl.py
+@@ -14,7 +14,7 @@ from core.vector_db import vector_store
+ 
+ logger = get_logger("etl-pipeline")
+ 
+-BOOKS_CSV = Path("data/raw/books.csv")
++BOOKS_CSV = Path("data/raw/Books.csv")
+ DEV_LIMIT = 1000  # Set to None to ingest the full dataset
+ 
+ 
+diff --git a/requirements.txt b/requirements.txt
+index 8fc74e7..cb68d8a 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -3,7 +3,7 @@ uvicorn[standard]>=0.28.0
+ pydantic>=2.6.0
+ pydantic-settings>=2.2.0
+ email-validator>=2.1.0
+-sqlalchemy>=2.0.28
++sqlalchemy>=2.0.28,<2.2
+ asyncpg>=0.29.0
+ psycopg2-binary>=2.9.9
+ sentence-transformers>=2.5.1

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookwise.fullname" . }}-api-gateway
+  labels:
+    {{- include "bookwise.labels" . | nindent 4 }}
+    app: api-gateway
+spec:
+  replicas: {{ .Values.replicaCount.apiGateway }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.image.repository }}/api-gateway:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ include "bookwise.fullname" . }}-config
+            - secretRef:
+                name: {{ include "bookwise.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.resources.apiGateway | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20

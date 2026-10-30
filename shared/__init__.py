@@ -1,0 +1,1 @@
+# BookWise AI Shared Package
