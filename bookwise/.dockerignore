@@ -1,8 +1,0 @@
-.venv
-__pycache__
-*.pyc
-.ipynb_checkpoints
-.git
-node_modules
-bookwise_local.db
-.env
